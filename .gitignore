@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist*.zip
+
+# Environment / secrets (JANGAN commit kunci API)
+.env
+.env.local
+.env.*.local
+
+# Data berisi kredensial (JANGAN commit)
+usercuti.xlsx
+admin_users_rows.csv
+*_rows.csv
+
+# Editor
+.vscode/
+.commandcode/
+
+# Logs
+*.log
+npm-debug.log*

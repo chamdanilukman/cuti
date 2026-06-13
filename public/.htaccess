@@ -1,0 +1,20 @@
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+# Izinkan PDF dibuka dalam iframe dari domain sendiri
+<IfModule mod_headers.c>
+    # Hapus X-Frame-Options bawaan server
+    Header always unset X-Frame-Options
+
+    # Izinkan frame dari domain sendiri + localhost (dev)
+    Header always set Content-Security-Policy "frame-ancestors 'self' https://cuti.disdik.grobogan.online http://localhost:*;"
+</IfModule>
+
+# Caching untuk file statis
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType application/pdf "access plus 1 month"
+</IfModule>

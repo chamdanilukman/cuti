@@ -1,0 +1,33 @@
+# Prevent directory listing
+Options -Indexes
+
+# Disable rewrite for this directory (allow direct file access)
+<IfModule mod_rewrite.c>
+  RewriteEngine Off
+</IfModule>
+
+# Only allow PDF files to be accessed
+<FilesMatch "\.(php|html|htm|js|cgi|pl|py|sh|exe)$">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
+
+# Allow PDF files with proper MIME type
+<FilesMatch "\.pdf$">
+  Order allow,deny
+  Allow from all
+
+  # Set proper content type
+  <IfModule mod_mime.c>
+    AddType application/pdf .pdf
+  </IfModule>
+</FilesMatch>
+
+# Security headers for PDF files
+<IfModule mod_headers.c>
+  <FilesMatch "\.pdf$">
+    Header set X-Content-Type-Options "nosniff"
+    Header set Content-Disposition "inline"
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>

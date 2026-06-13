@@ -1,0 +1,48 @@
+.ui-v2 {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(79, 70, 229, 0.08), transparent 34rem),
+    #f8fafc;
+  color: #0f172a;
+  -webkit-tap-highlight-color: rgba(79, 70, 229, 0.16);
+}
+
+.ui-v2 * {
+  box-sizing: border-box;
+}
+
+.ui-v2 :focus-visible {
+  outline: 3px solid rgba(79, 70, 229, 0.35);
+  outline-offset: 2px;
+}
+
+.ui-v2 .v2-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.ui-v2 .v2-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.ui-v2 .v2-scrollbar::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.ui-v2 .v2-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-v2 *,
+  .ui-v2 *::before,
+  .ui-v2 *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
