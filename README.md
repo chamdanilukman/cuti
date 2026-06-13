@@ -1,6 +1,6 @@
-# CUTIDISDIK — Sistem Informasi Cuti Dinas Pendidikan Grobogan
+# CUTI — Sistem Informasi Cuti
 
-Aplikasi web untuk manajemen pengajuan cuti Aparatur Sipil Negara (ASN) di lingkungan Dinas Pendidikan Kabupaten Grobogan. Mendukung alur persetujuan dua tingkat (Koordinator Wilayah → Admin Dinas), pembuatan dokumen surat otomatis, dan export rekap Excel.
+Aplikasi web untuk manajemen pengajuan cuti. Mendukung alur persetujuan dua tingkat (Koordinator Wilayah → Admin Dinas), pembuatan dokumen surat otomatis, dan export rekap Excel.
 
 ## Tech Stack
 
