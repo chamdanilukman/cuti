@@ -1,33 +1,78 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AdminUser, LoginCredentials, AuthState } from '../types';
-import { adminAuth, authStorage } from '../utils/adminAuth';
+import { adminAuth, authStorage, AUTH_CHANGED_EVENT } from '../utils/adminAuth';
 
 export const useAdminAuth = () => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     user: null,
-    token: null
+    sessionToken: null
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from localStorage + validate session with server
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
         const storedAuth = authStorage.getAuthState();
-        if (storedAuth && storedAuth.user) {
-          setAuthState(storedAuth);
+        if (storedAuth && storedAuth.user && storedAuth.sessionToken) {
+          // Validate session with server before trusting localStorage
+          const validatedUser = await adminAuth.refreshUser(storedAuth.sessionToken);
+          if (validatedUser) {
+            // Session still valid — update user data
+            const validAuthState: AuthState = {
+              ...storedAuth,
+              user: validatedUser
+            };
+            setAuthState(validAuthState);
+            authStorage.setAuthState(validAuthState);
+          } else {
+            // Session expired or invalid — clear auth state
+            console.warn('Session expired or invalid, clearing auth state');
+            authStorage.clearAuthState();
+            setAuthState({
+              isAuthenticated: false,
+              user: null,
+              sessionToken: null
+            });
+          }
         }
       } catch (err) {
         console.error('Error initializing auth state:', err);
         authStorage.clearAuthState();
+        setAuthState({
+          isAuthenticated: false,
+          user: null,
+          sessionToken: null
+        });
       } finally {
         setLoading(false);
       }
     };
 
     initializeAuth();
+  }, []);
+
+  // Listen for auth changes from other useAdminAuth instances (cross-component sync)
+  useEffect(() => {
+    const handleAuthChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<AuthState | null>;
+      const newState = customEvent.detail;
+
+      if (newState && newState.user && newState.sessionToken) {
+        setAuthState(newState);
+      } else {
+        setAuthState({
+          isAuthenticated: false,
+          user: null,
+          sessionToken: null
+        });
+      }
+    };
+
+    window.addEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
   }, []);
 
   // Login function
@@ -37,18 +82,18 @@ export const useAdminAuth = () => {
 
     try {
       const result = await adminAuth.login(credentials);
-      
-      if (result.success && result.user) {
+
+      if (result.success && result.user && result.sessionToken) {
         const newAuthState: AuthState = {
           isAuthenticated: true,
           user: result.user,
-          token: `demo_token_${result.user.id}` // Demo token
+          sessionToken: result.sessionToken
         };
-        
+
         setAuthState(newAuthState);
         authStorage.setAuthState(newAuthState);
-        
-        return { success: true, user: result.user };
+
+        return { success: true, user: result.user, passwordMustChange: result.passwordMustChange };
       } else {
         setError(result.error || 'Login gagal');
         return { success: false, error: result.error };
@@ -62,16 +107,20 @@ export const useAdminAuth = () => {
     }
   }, []);
 
-  // Logout function
-  const logout = useCallback(() => {
+  // Logout function — hapus session di server + localStorage
+  const logout = useCallback(async () => {
+    const token = authState.sessionToken;
+    if (token) {
+      await adminAuth.logout(token);
+    }
     setAuthState({
       isAuthenticated: false,
       user: null,
-      token: null
+      sessionToken: null
     });
     authStorage.clearAuthState();
     setError(null);
-  }, []);
+  }, [authState.sessionToken]);
 
   // Check if user has permission to access leave request
   const canAccessLeaveRequest = useCallback((leaveRequest: any): boolean => {
@@ -82,7 +131,7 @@ export const useAdminAuth = () => {
   // Get filtered leave requests based on user permissions
   const getFilteredLeaveRequests = useCallback((allRequests: any[]): any[] => {
     if (!authState.user) return [];
-    
+
     // Admin Disdik can see all
     if (authState.user.role === 'admin_disdik' && authState.user.permissions.canAccessAll) {
       return allRequests;
@@ -116,19 +165,19 @@ export const useAdminAuth = () => {
     switch (user.role) {
       case 'admin_disdik':
         return 'Akses penuh ke semua data';
-      
+
       case 'korwil': {
         const kecamatan = permissions.kecamatanAccess?.join(', ') || permissions.kecamatan?.join(', ') || '';
         const jenjangKorwil = permissions.jenjangAccess?.join(', ') || '';
         return `Kecamatan: ${kecamatan} | Jenjang: ${jenjangKorwil}`;
       }
-      
+
       case 'smp_admin': {
         const schools = permissions.schoolAccess?.join(', ') || '';
         const jenjangSMP = permissions.jenjangAccess?.join(', ') || '';
         return `Sekolah: ${schools} | Jenjang: ${jenjangSMP}`;
       }
-      
+
       default:
         return '';
     }
@@ -148,12 +197,13 @@ export const useAdminAuth = () => {
     }
   }, [authState.user]);
 
-  // Refresh user data
+  // Refresh user data via session token
   const refreshUser = useCallback(async () => {
-    if (!authState.user) return;
+    const token = authState.sessionToken;
+    if (!token) return;
 
     try {
-      const updatedUser = await adminAuth.getAdminUser(authState.user.id);
+      const updatedUser = await adminAuth.refreshUser(token);
       if (updatedUser) {
         const newAuthState: AuthState = {
           ...authState,
@@ -172,6 +222,7 @@ export const useAdminAuth = () => {
     authState,
     isAuthenticated: authState.isAuthenticated,
     user: authState.user,
+    sessionToken: authState.sessionToken,
     loading,
     error,
 

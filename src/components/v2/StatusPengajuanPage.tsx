@@ -8,7 +8,7 @@ interface StatusPengajuanPageProps {
   nipFilter: string;
   setNipFilter: (filter: string) => void;
   onEditRequest: (request: LeaveRequest) => void;
-  getLeaveRequestsByNIP: (nip: string) => Promise<LeaveRequest[]>;
+  checkLeaveStatusByNIP: (nip: string) => Promise<LeaveRequest[]>;
 }
 
 const StatusPengajuanPage: React.FC<StatusPengajuanPageProps> = (props) => (

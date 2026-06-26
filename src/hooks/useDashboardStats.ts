@@ -273,11 +273,8 @@ const loadDashboardStats = async (year: number): Promise<DashboardStats> => {
     setCachedDashboardStats(year, stats);
     return stats;
   } catch {
-    // Fallback to client-side aggregation if RPC not deployed yet
-    const rows = await db.getDashboardSummaryRows(year);
-    const stats = buildDashboardStats(rows, year);
-    setCachedDashboardStats(year, stats);
-    return stats;
+    console.error('Dashboard stats RPC gagal — pastikan get_dashboard_stats sudah di-deploy');
+    throw new Error('Dashboard stats tidak tersedia');
   }
 };
 
@@ -285,16 +282,21 @@ const loadRecentActivity = async (): Promise<RecentActivityItem[]> => {
   const cached = getCachedRecentActivity();
   if (cached) return cached;
 
-  const rows = await db.getRecentActivity(5);
-  const activities: RecentActivityItem[] = rows.map(row => ({
-    nama: row.nama,
-    jenisCuti: row.jenis_cuti,
-    status: row.status,
-    createdAt: row.created_at,
-  }));
+  try {
+    const rows = await db.getRecentActivity(5);
+    const activities: RecentActivityItem[] = rows.map(row => ({
+      nama: row.nama,
+      jenisCuti: row.jenis_cuti,
+      status: row.status,
+      createdAt: row.created_at,
+    }));
 
-  setCachedRecentActivity(activities);
-  return activities;
+    setCachedRecentActivity(activities);
+    return activities;
+  } catch {
+    // Dashboard publik — no session is fine, return empty
+    return [];
+  }
 };
 
 export const useDashboardStats = (year?: number) => {

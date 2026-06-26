@@ -32,7 +32,7 @@ interface EnhancedAdminPanelProps {
 }
 
 type TabType = 'dashboard' | 'approval' | 'reports' | 'analytics' | 'calendar';
-type FilterType = 'all' | 'pending' | 'approved_coordinator' | 'approved_admin' | 'rejected';
+type FilterType = 'all' | 'pending' | 'approved_coordinator' | 'approved_admin' | 'document_issued' | 'rejected';
 
 const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const formatTanggal = (dateStr: string) => {
@@ -87,30 +87,35 @@ const EnhancedAdminPanel: React.FC<EnhancedAdminPanelProps> = ({
   const [itemsPerPage, setItemsPerPage] = useState<LeaveRequestPageSize>(10);
   const isServerPaged = userRole === 'admin_disdik';
   const serverPageSize = itemsPerPage === 'all' ? 'all' : itemsPerPage;
+  // dateRange.start = month only ("01".."12"), dateRange.end = year only ("2025")
   const normalizedDateRange = useMemo(() => {
     const lastDayOfMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
-    const parseStart = (v: string) => {
-      if (!v) return '';
-      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-      if (/^\d{4}-\d{2}$/.test(v)) return `${v}-01`;
-      if (/^\d{4}$/.test(v)) return `${v}-01-01`;
-      return v;
-    };
-    const parseEnd = (v: string) => {
-      if (!v) return '';
-      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-      if (/^\d{4}-\d{2}$/.test(v)) {
-        const [y, m] = v.split('-').map(Number);
-        return `${y}-${String(m).padStart(2, '0')}-${String(lastDayOfMonth(y, m)).padStart(2, '0')}`;
-      }
-      if (/^\d{4}$/.test(v)) return `${v}-12-31`;
-      return v;
-    };
-    const rawEnd = dateRange.end || dateRange.start;
-    return {
-      start: dateRange.start ? parseStart(dateRange.start) : '',
-      end: rawEnd ? parseEnd(rawEnd) : '',
-    };
+    const month = dateRange.start; // "01".."12" or ""
+    const year = dateRange.end;    // "2025" or ""
+
+    if (month && year) {
+      // Both month and year selected
+      const y = Number(year);
+      const m = Number(month);
+      return {
+        start: `${year}-${month}-01`,
+        end: `${year}-${month}-${String(lastDayOfMonth(y, m)).padStart(2, '0')}`,
+      };
+    } else if (year) {
+      // Only year selected
+      return {
+        start: `${year}-01-01`,
+        end: `${year}-12-31`,
+      };
+    } else if (month) {
+      // Only month selected (use current year)
+      const y = new Date().getFullYear();
+      return {
+        start: `${y}-${month}-01`,
+        end: `${y}-${month}-${String(lastDayOfMonth(y, Number(month))).padStart(2, '0')}`,
+      };
+    }
+    return { start: '', end: '' };
   }, [dateRange]);
 
   const pageFilters = useMemo(() => ({
@@ -139,7 +144,7 @@ const EnhancedAdminPanel: React.FC<EnhancedAdminPanelProps> = ({
 
   const refreshDashStats = useCallback(async () => {
     try {
-      const counts = await db.getLeaveRequestsCounts({ userRole, userPermissions });
+      const counts = await db.getLeaveRequestsCounts();
       setDashStats({
         total: counts.total,
         pending: counts.pending,
@@ -148,7 +153,7 @@ const EnhancedAdminPanel: React.FC<EnhancedAdminPanelProps> = ({
         rejected: counts.rejected,
       });
     } catch { /* ignore */ }
-  }, [userRole, userPermissions]);
+  }, []);
 
   useEffect(() => { refreshDashStats(); }, [refreshDashStats]);
 
@@ -246,21 +251,17 @@ const EnhancedAdminPanel: React.FC<EnhancedAdminPanelProps> = ({
       );
     }
 
-    // Filter by month (dateRange.start = "YYYY-MM")
-    if (dateRange.start) {
-      const [y, m] = dateRange.start.split('-');
-      filtered = filtered.filter(req => {
-        const d = new Date(req.tanggalMulai);
-        return d.getFullYear() === Number(y) && (d.getMonth() + 1) === Number(m);
-      });
-    }
+    // Filter by month and/or year
+    // dateRange.start = month only ("01".."12"), dateRange.end = year only ("2025")
+    const filterMonth = dateRange.start ? Number(dateRange.start) : null;
+    const filterYear = dateRange.end ? Number(dateRange.end) : null;
 
-    // Filter by year (dateRange.end = "YYYY")
-    if (dateRange.end) {
-      const year = Number(dateRange.end);
+    if (filterMonth || filterYear) {
       filtered = filtered.filter(req => {
-        const d = new Date(req.tanggalMulai);
-        return d.getFullYear() === year;
+        const d = new Date(`${req.tanggalMulai}T00:00:00`);
+        if (filterYear && d.getFullYear() !== filterYear) return false;
+        if (filterMonth && (d.getMonth() + 1) !== filterMonth) return false;
+        return true;
       });
     }
 
@@ -809,7 +810,7 @@ const EnhancedAdminPanel: React.FC<EnhancedAdminPanelProps> = ({
             >
               <option value="">Semua Bulan</option>
               {['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'].map((m, i) => (
-                <option key={i} value={`${new Date().getFullYear()}-${String(i+1).padStart(2,'0')}`}>{m}</option>
+                <option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>
               ))}
             </select>
           </div>
@@ -966,6 +967,14 @@ const EnhancedAdminPanel: React.FC<EnhancedAdminPanelProps> = ({
                           >
                             <FileText className="w-4 h-4" />
                           </button>
+                        )}
+                        {request.status === 'approved_admin' && (
+                          <CompactDocumentDownloadButton
+                            request={request}
+                            onSuccess={showModal}
+                            onError={showModal}
+                            workCalendarDays={workCalendarDays}
+                          />
                         )}
                         {request.status === 'approved_coordinator' && (
                           <>

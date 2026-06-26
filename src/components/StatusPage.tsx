@@ -20,7 +20,7 @@ interface StatusPageProps {
   nipFilter: string;
   setNipFilter: (filter: string) => void;
   onEditRequest: (request: LeaveRequest) => void;
-  getLeaveRequestsByNIP: (nip: string) => Promise<LeaveRequest[]>;
+  checkLeaveStatusByNIP: (nip: string) => Promise<LeaveRequest[]>;
 }
 
 const statusLabel: Record<string, string> = {
@@ -36,7 +36,7 @@ const StatusPage: React.FC<StatusPageProps> = ({
   nipFilter,
   setNipFilter,
   onEditRequest,
-  getLeaveRequestsByNIP,
+  checkLeaveStatusByNIP,
 }) => {
   const [filteredRequests, setFilteredRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ const StatusPage: React.FC<StatusPageProps> = ({
     }
     setLoading(true);
     try {
-      const requests = await getLeaveRequestsByNIP(nipFilter.trim());
+      const requests = await checkLeaveStatusByNIP(nipFilter.trim());
       setFilteredRequests(requests);
       setSearched(true);
     } catch {

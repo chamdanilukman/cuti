@@ -1,30 +1,36 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import './lib/chart-setup';
-import './styles/v2.css';
-import V2Footer from './components/v2/V2Footer';
-import V2Header from './components/v2/V2Header';
-import V2Dashboard from './components/v2/V2Dashboard';
-import V2Modal from './components/v2/V2Modal';
-import PengajuanCutiPage from './components/v2/PengajuanCutiPage';
-import StatusPengajuanPage from './components/v2/StatusPengajuanPage';
-import DinasPage from './components/v2/DinasPage';
-import TataCaraPage from './components/v2/TataCaraPage';
-import { LeaveRequest, UserRole } from './types';
-import { useLeaveRequests } from './hooks/useLeaveRequests';
+import React, { useState } from "react";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import "./lib/chart-setup";
+import "./styles/v2.css";
+import V2Footer from "./components/v2/V2Footer";
+import V2Header from "./components/v2/V2Header";
+import V2Dashboard from "./components/v2/V2Dashboard";
+import V2Modal from "./components/v2/V2Modal";
+import PengajuanCutiPage from "./components/v2/PengajuanCutiPage";
+import StatusPengajuanPage from "./components/v2/StatusPengajuanPage";
+import DinasPage from "./components/v2/DinasPage";
+import TataCaraPage from "./components/v2/TataCaraPage";
+import { LeaveRequest, UserRole } from "./types";
+import { useLeaveRequests } from "./hooks/useLeaveRequests";
 
 const AppV2Routes: React.FC = () => {
   const navigate = useNavigate();
 
-  const [currentRole, setCurrentRole] = useState<UserRole>('user');
+  const [currentRole, setCurrentRole] = useState<UserRole>("user");
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [modal, setModal] = useState<{ isOpen: boolean; message: string; type: 'info' | 'success' | 'error' }>({
+  const [modal, setModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    type: "info" | "success" | "error";
+  }>({
     isOpen: false,
-    message: '',
-    type: 'info',
+    message: "",
+    type: "info",
   });
-  const [nipFilter, setNipFilter] = useState('');
-  const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
+  const [nipFilter, setNipFilter] = useState("");
+  const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(
+    null,
+  );
 
   const {
     leaveRequests,
@@ -33,96 +39,104 @@ const AppV2Routes: React.FC = () => {
     createLeaveRequest,
     updateLeaveRequest,
     getLeaveRequestsByNIP,
+    checkLeaveStatusByNIP,
   } = useLeaveRequests({ autoLoad: false });
 
-  const showModal = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+  const showModal = (
+    message: string,
+    type: "info" | "success" | "error" = "info",
+  ) => {
     setModal({ isOpen: true, message, type });
   };
 
   const closeModal = () => {
-    setModal({ isOpen: false, message: '', type: 'info' });
+    setModal({ isOpen: false, message: "", type: "info" });
   };
 
-  const handleUpdateLeaveRequest = async (id: string, updates: Partial<LeaveRequest>) => {
+  const handleUpdateLeaveRequest = async (
+    id: string,
+    updates: Partial<LeaveRequest>,
+  ) => {
     const updatedRequest = await updateLeaveRequest(id, updates);
     return updatedRequest !== null;
   };
 
-  const approveRequest = async (id: string, role: 'coordinator' | 'admin') => {
-    const request = leaveRequests.find(req => req.id === id);
-    const newStatus = role === 'coordinator' ? 'approved_coordinator' : 'approved_admin';
+  const approveRequest = async (id: string, role: "coordinator" | "admin") => {
+    const request = leaveRequests.find((req) => req.id === id);
+    const newStatus =
+      role === "coordinator" ? "approved_coordinator" : "approved_admin";
     const success = await handleUpdateLeaveRequest(id, { status: newStatus });
 
     if (success) {
-      const roleText = role === 'coordinator' ? 'Koordinator Wilayah' : 'Dinas Pendidikan';
+      const roleText =
+        role === "coordinator" ? "Koordinator Wilayah" : "Dinas Pendidikan";
       showModal(
         request
           ? `Pengajuan cuti dari ${request.nama} telah disetujui oleh ${roleText}.`
           : `Pengajuan cuti telah disetujui oleh ${roleText}.`,
-        'success'
+        "success",
       );
       return true;
     } else {
-      showModal('Gagal menyetujui pengajuan. Silakan coba kembali.', 'error');
+      showModal("Gagal menyetujui pengajuan. Silakan coba kembali.", "error");
       return false;
     }
   };
 
-  const rejectRequest = async (id: string, role: 'coordinator' | 'admin', reason: string) => {
-    const request = leaveRequests.find(req => req.id === id);
+  const rejectRequest = async (
+    id: string,
+    role: "coordinator" | "admin",
+    reason: string,
+  ) => {
+    const request = leaveRequests.find((req) => req.id === id);
     const success = await handleUpdateLeaveRequest(id, {
-      status: 'rejected',
+      status: "rejected",
       rejectionReason: reason,
     });
 
     if (success) {
-      const roleText = role === 'coordinator' ? 'Koordinator Wilayah' : 'Admin Dinas';
+      const roleText =
+        role === "coordinator" ? "Koordinator Wilayah" : "Admin Dinas";
       showModal(
         request
           ? `Pengajuan cuti dari ${request.nama} telah ditolak oleh ${roleText} dengan alasan: "${reason}"`
           : `Pengajuan cuti telah ditolak oleh ${roleText} dengan alasan: "${reason}"`,
-        'error'
+        "error",
       );
       return true;
     } else {
-      showModal('Gagal menolak pengajuan. Silakan coba kembali.', 'error');
+      showModal("Gagal menolak pengajuan. Silakan coba kembali.", "error");
       return false;
     }
   };
 
-  const addLeaveRequest = async (request: Omit<LeaveRequest, 'id' | 'status' | 'rejectionReason' | 'submissionDate'>) => {
-    if (editingRequest) {
-      const success = await handleUpdateLeaveRequest(editingRequest.id, {
-        ...request,
-        status: 'pending',
-        rejectionReason: '',
-        isRevised: true,
-        originalRejectionReason: editingRequest.rejectionReason,
-        coordinatorApprovalDate: undefined,
-        adminApprovalDate: undefined,
-      });
-
-      if (success) {
-        showModal('Pengajuan cuti telah diperbaiki dan diajukan kembali. Pengajuan akan diproses secara berjenjang.', 'success');
-        setEditingRequest(null);
-        navigate('/status');
-      } else {
-        showModal('Gagal memperbaiki pengajuan cuti. Silakan coba kembali.', 'error');
-      }
+  const addLeaveRequest = async (
+    request: Omit<
+      LeaveRequest,
+      "id" | "status" | "rejectionReason" | "submissionDate"
+    >,
+  ) => {
+    // Semua pengajuan (baru maupun revisi) dibuat via createLeaveRequest (public RPC, tanpa session)
+    // Admin hanya bertugas approve/reject, bukan mengajukan cuti
+    const newRequest = await createLeaveRequest(request);
+    if (newRequest) {
+      const msg = editingRequest
+        ? "Pengajuan cuti telah diperbaiki dan diajukan kembali. Pengajuan akan diproses secara berjenjang."
+        : "Pengajuan cuti telah disimpan. Pengajuan akan diproses secara berjenjang.";
+      showModal(msg, "success");
+      setEditingRequest(null);
+      navigate("/status");
     } else {
-      const newRequest = await createLeaveRequest(request);
-      if (newRequest) {
-        showModal('Pengajuan cuti telah disimpan. Pengajuan akan diproses secara berjenjang.', 'success');
-        navigate('/status');
-      } else {
-        showModal('Gagal menyimpan pengajuan cuti. Silakan coba kembali.', 'error');
-      }
+      showModal(
+        "Gagal menyimpan pengajuan cuti. Silakan coba kembali.",
+        "error",
+      );
     }
   };
 
   const editRejectedRequest = (request: LeaveRequest) => {
     setEditingRequest(request);
-    navigate('/pengajuan');
+    navigate("/pengajuan");
   };
 
   return (
@@ -135,7 +149,7 @@ const AppV2Routes: React.FC = () => {
           element={
             <PengajuanCutiPage
               onSubmit={addLeaveRequest}
-              showModal={(msg: string) => showModal(msg, 'info')}
+              showModal={(msg: string) => showModal(msg, "info")}
               editingRequest={editingRequest}
               getLeaveRequestsByNIP={getLeaveRequestsByNIP}
             />
@@ -149,7 +163,7 @@ const AppV2Routes: React.FC = () => {
               nipFilter={nipFilter}
               setNipFilter={setNipFilter}
               onEditRequest={editRejectedRequest}
-              getLeaveRequestsByNIP={getLeaveRequestsByNIP}
+              checkLeaveStatusByNIP={checkLeaveStatusByNIP}
             />
           }
         />
@@ -165,7 +179,7 @@ const AppV2Routes: React.FC = () => {
               onApprove={approveRequest}
               onReject={rejectRequest}
               onUpdate={handleUpdateLeaveRequest}
-              showModal={(msg: string) => showModal(msg, 'info')}
+              showModal={(msg: string) => showModal(msg, "info")}
             />
           }
         />

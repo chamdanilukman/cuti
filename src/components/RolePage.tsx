@@ -6,6 +6,7 @@ import AdminPanel from './AdminPanel';
 import DataRecapPanel from './DataRecapPanel';
 import EnhancedAdminPanel from './EnhancedAdminPanel';
 import AdminLogin from './AdminLogin';
+import ChangePasswordModal from './ChangePasswordModal';
 import { useAdminAuth } from '../hooks/useAdminAuth';
 
 interface RolePageProps {
@@ -34,11 +35,15 @@ const RolePage: React.FC<RolePageProps> = ({
   const [activeTab, setActiveTab] = useState<'approval' | 'recap'>('approval');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedAdminType, setSelectedAdminType] = useState<'admin' | 'coordinator' | null>(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [pendingLoginUser, setPendingLoginUser] = useState<any>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Use the new admin authentication hook
   const {
     isAuthenticated,
     user,
+    sessionToken,
     login,
     logout,
     loading,
@@ -71,9 +76,15 @@ const RolePage: React.FC<RolePageProps> = ({
     setShowLoginModal(true);
   };
 
-  const handleLoginSuccess = (loggedInUser: any) => {
+  const handleLoginSuccess = (loggedInUser: any, passwordMustChange?: boolean) => {
     setShowLoginModal(false);
     setSelectedAdminType(null);
+
+    if (passwordMustChange) {
+      setPendingLoginUser(loggedInUser);
+      setShowChangePassword(true);
+      return;
+    }
 
     // Set the appropriate role based on user type
     if (loggedInUser.role === 'admin_disdik') {
@@ -87,16 +98,43 @@ const RolePage: React.FC<RolePageProps> = ({
     showModal(`Masuk berhasil sebagai ${getRoleDisplayName(loggedInUser.role)}.`);
   };
 
-  const handleLogout = () => {
+  const handlePasswordChanged = () => {
+    setShowChangePassword(false);
+    if (pendingLoginUser) {
+      const user = pendingLoginUser;
+      setPendingLoginUser(null);
+
+      if (user.role === 'admin_disdik') {
+        setCurrentRole('admin');
+      } else {
+        setCurrentRole('coordinator');
+      }
+
+      setIsAdminLoggedIn(true);
+      showModal(`Masuk berhasil sebagai ${getRoleDisplayName(user.role)}. Password sudah diubah.`);
+    }
+  };
+
+  const handleCancelPasswordChange = () => {
+    setShowChangePassword(false);
+    setPendingLoginUser(null);
     logout();
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await logout();
     setIsAdminLoggedIn(false);
     setCurrentRole('user');
     setActiveTab('approval');
+    setIsLoggingOut(false);
     showModal('Keluar berhasil.');
   };
 
   // Sync role after refresh based on authenticated user
   useEffect(() => {
+    if (isLoggingOut) return;
+
     if (isAuthenticated && user) {
       setIsAdminLoggedIn(true);
 
@@ -108,7 +146,7 @@ const RolePage: React.FC<RolePageProps> = ({
         setCurrentRole('coordinator');
       }
     }
-  }, [isAuthenticated, user, setCurrentRole, setIsAdminLoggedIn]);
+  }, [isAuthenticated, user, setCurrentRole, setIsAdminLoggedIn, isLoggingOut]);
 
   const handleLoginCancel = () => {
     setShowLoginModal(false);
@@ -205,12 +243,22 @@ const RolePage: React.FC<RolePageProps> = ({
           onLogin={async (credentials) => {
             const result = await login(credentials);
             if (result.success && result.user) {
-              handleLoginSuccess(result.user);
+              handleLoginSuccess(result.user, result.passwordMustChange);
             }
             return result;
           }}
           onCancel={handleLoginCancel}
           loading={loading}
+        />
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePassword && pendingLoginUser && sessionToken && (
+        <ChangePasswordModal
+          adminNama={pendingLoginUser.nama}
+          sessionToken={sessionToken}
+          onSuccess={handlePasswordChanged}
+          onCancel={handleCancelPasswordChange}
         />
       )}
     </div>

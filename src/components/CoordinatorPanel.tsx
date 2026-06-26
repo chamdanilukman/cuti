@@ -43,7 +43,7 @@ const CoordinatorPanel: React.FC<CoordinatorPanelProps> = ({
   userPermissions,
 }) => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history'>('history');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved_coordinator' | 'approved_admin' | 'document_issued' | 'rejected'>('pending');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved_coordinator' | 'approved_admin' | 'document_issued' | 'rejected'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<LeaveRequestPageSize>(10);
@@ -87,7 +87,7 @@ const CoordinatorPanel: React.FC<CoordinatorPanelProps> = ({
   // Dashboard stats — unfiltered, independent of active status filter
   const refreshStats = React.useCallback(async () => {
     try {
-      const counts = await db.getLeaveRequestsCounts({ userRole, userPermissions });
+      const counts = await db.getLeaveRequestsCounts();
       setStats({
         total: counts.total,
         pending: counts.pending,
@@ -99,7 +99,7 @@ const CoordinatorPanel: React.FC<CoordinatorPanelProps> = ({
     } catch {
       // silently ignore
     }
-  }, [userRole, userPermissions]);
+  }, []);
 
   React.useEffect(() => { refreshStats(); }, [refreshStats]);
 

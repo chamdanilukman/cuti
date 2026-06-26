@@ -48,14 +48,12 @@ const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
           const allRecords = await db.getAllLeaveRequests();
           if (!cancelled) setFullData(allRecords.map(transformDBToFrontend));
         } else {
-          // For coordinator / SMP-SKB: load with same permission filters as the panel
+          // For coordinator / SMP-SKB: load all records the panel would show
           const { data } = await db.getLeaveRequestsPage({
             page: 1,
             pageSize: 'all',
             filters: {
               status: 'all',
-              userRole: authUserRole,
-              userPermissions,
             },
           });
           if (!cancelled) setFullData(data.map(transformDBToFrontend));

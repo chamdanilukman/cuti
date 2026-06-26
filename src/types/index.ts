@@ -45,6 +45,7 @@ export interface AdminUser {
   username: string;
   role: 'admin_disdik' | 'korwil' | 'smp_admin';
   permissions: AdminPermissions;
+  password_must_change?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -72,5 +73,16 @@ export interface LoginCredentials {
 export interface AuthState {
   isAuthenticated: boolean;
   user: AdminUser | null;
-  token: string | null;
+  sessionToken: string | null;
+}
+
+export interface LoginResponse {
+  session_token: string;
+  password_must_change?: boolean;
+  user: AdminUser;
+}
+
+export interface SessionInfo {
+  sessionToken: string;
+  expiresAt: string;
 }
